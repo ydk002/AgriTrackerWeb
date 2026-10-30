@@ -203,6 +203,7 @@ export default function DashboardPage() {
             style={{
               padding: '10px 16px',
               backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius)',
               fontSize: '0.9rem',

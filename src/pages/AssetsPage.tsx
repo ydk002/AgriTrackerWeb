@@ -666,8 +666,8 @@ export default function AssetsPage() {
               {/* Unit Economics Summary */}
               <div
                 style={{
-                  background: '#f1f8e9',
-                  border: '1px solid #c5e1a5',
+                  background: 'var(--color-primary-subtle)',
+                  border: '1px solid var(--color-primary-border)',
                   borderRadius: 'var(--radius)',
                   padding: 14,
                   marginBottom: 16,
@@ -679,15 +679,15 @@ export default function AssetsPage() {
               >
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Allocated Cost</div>
-                  <div style={{ fontWeight: 700, color: '#e65100' }}>{fin.allocatedCost.toFixed(2)} RON</div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-secondary)' }}>{fin.allocatedCost.toFixed(2)} RON</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Sales Revenue</div>
-                  <div style={{ fontWeight: 700, color: '#2e7d32' }}>{fin.totalRevenue.toFixed(2)} RON</div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{fin.totalRevenue.toFixed(2)} RON</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Net Profit</div>
-                  <div style={{ fontWeight: 700, color: fin.profitability >= 0 ? '#2e7d32' : '#c62828' }}>
+                  <div style={{ fontWeight: 700, color: fin.profitability >= 0 ? 'var(--color-primary)' : 'var(--color-error)' }}>
                     {fin.profitability >= 0 ? '+' : ''}{fin.profitability.toFixed(2)} RON
                   </div>
                 </div>
@@ -723,7 +723,7 @@ export default function AssetsPage() {
                               ({ev.quantity_affected} {selectedAssetForHistory.unit_of_measurement})
                             </span>
                           )}
-                          {notes && <p style={{ fontSize: '0.85rem', color: '#555', marginTop: 2 }}>{notes}</p>}
+                          {notes && <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>{notes}</p>}
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
                           {new Date(ev.offline_timestamp).toLocaleDateString()}

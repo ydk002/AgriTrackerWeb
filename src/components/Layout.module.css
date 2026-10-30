@@ -15,7 +15,7 @@
   left: 0;
   bottom: 0;
   z-index: 100;
-  transition: transform var(--transition);
+  transition: transform var(--transition), background-color var(--transition);
 }
 
 .logo {
@@ -62,7 +62,7 @@
 
 .navLinkActive {
   color: var(--color-primary);
-  background-color: #e8f5e9;
+  background-color: var(--color-primary-subtle);
   border-left-color: var(--color-primary);
 }
 
@@ -70,6 +70,57 @@
   font-size: 1.2rem;
   width: 24px;
   text-align: center;
+}
+
+.themeToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.themeLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switchTrack {
+  width: 42px;
+  height: 22px;
+  background-color: #bdbdbd;
+  border-radius: 999px;
+  position: relative;
+  transition: background-color var(--transition);
+}
+
+.switchTrackActive {
+  background-color: var(--color-primary);
+}
+
+.switchThumb {
+  width: 18px;
+  height: 18px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform var(--transition);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.switchThumbActive {
+  transform: translateX(20px);
 }
 
 .userSection {
@@ -118,6 +169,7 @@
   left: 16px;
   z-index: 200;
   background-color: var(--color-surface);
+  color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 8px 12px;

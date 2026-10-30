@@ -113,7 +113,7 @@
   text-transform: uppercase;
   padding: 4px 8px;
   border-radius: 4px;
-  background-color: #e8f5e9;
+  background-color: var(--color-primary-subtle);
   color: var(--color-primary);
 }
 
@@ -186,13 +186,13 @@
 }
 
 .actionBtn.primary {
-  background-color: #e8f5e9;
+  background-color: var(--color-primary-subtle);
   color: var(--color-primary);
-  border-color: #c8e6c9;
+  border-color: var(--color-primary-border);
 }
 
 .actionBtn.primary:hover {
-  background-color: #c8e6c9;
+  background-color: var(--color-primary-border);
 }
 
 /* Modal */
