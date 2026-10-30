@@ -160,3 +160,45 @@ export function extractEventNotes(details: unknown): string {
   }
   return '';
 }
+
+export function getEventEmoji(eventType: string, assetType?: AssetType): string {
+  switch (eventType) {
+    case 'planting':
+      return assetType === 'livestock' ? '🐣' : '🌱';
+    case 'feeding':
+      return '🌾';
+    case 'medication':
+      return '💊';
+    case 'harvest':
+      return '🧺';
+    case 'attrition':
+      return '📉';
+    case 'split':
+      return '✂️';
+    case 'sale':
+      return '💰';
+    default:
+      return '📋';
+  }
+}
+
+export function getEventLabel(eventType: string, assetType?: AssetType): string {
+  switch (eventType) {
+    case 'planting':
+      return assetType === 'livestock' ? 'Birth / Restock' : 'Planting';
+    case 'feeding':
+      return assetType === 'crop' ? 'Fertilize / Care' : 'Feeding';
+    case 'medication':
+      return 'Medication';
+    case 'harvest':
+      return assetType === 'livestock' ? 'Collection / Yield' : 'Harvest';
+    case 'attrition':
+      return 'Loss / Attrition';
+    case 'split':
+      return 'Split Batch';
+    case 'sale':
+      return 'Sale';
+    default:
+      return eventType;
+  }
+}

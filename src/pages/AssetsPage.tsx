@@ -4,6 +4,8 @@ import { useFarm } from '../hooks/useFarm';
 import { supabase } from '../lib/supabase';
 import {
   extractEventNotes,
+  getEventEmoji,
+  getEventLabel,
   type Asset,
   type OperationalEvent,
   type AssetType,
@@ -17,7 +19,7 @@ import styles from './AssetsPage.module.css';
 
 export default function AssetsPage() {
   const { user } = useAuth();
-  const { farm, zones } = useFarm();
+  const { farm, zones, createZone } = useFarm();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [events, setEvents] = useState<OperationalEvent[]>([]);
   const [allocations, setAllocations] = useState<LedgerAllocation[]>([]);
@@ -31,8 +33,13 @@ export default function AssetsPage() {
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showZoneModal, setShowZoneModal] = useState(false);
   const [selectedAssetForEvent, setSelectedAssetForEvent] = useState<Asset | null>(null);
   const [selectedAssetForHistory, setSelectedAssetForHistory] = useState<Asset | null>(null);
+
+  // Form states for Add Zone
+  const [newZoneName, setNewZoneName] = useState('');
+  const [newZoneDesc, setNewZoneDesc] = useState('');
 
   // Form states for Add Asset
   const [name, setName] = useState('');
@@ -90,7 +97,7 @@ export default function AssetsPage() {
       return {
         ...asset,
         remaining_quantity: remaining,
-        zone_name: asset.zone_id ? zoneMap.get(asset.zone_id) || 'Unassigned' : 'No Zone',
+        zone_name: asset.zone_id ? zoneMap.get(asset.zone_id) || 'Unassigned' : 'Unassigned',
       };
     });
   }, [assets, events, zones]);
@@ -121,6 +128,23 @@ export default function AssetsPage() {
     };
   };
 
+  // Handle Create Zone
+  const handleCreateZone = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      setFormSubmitting(true);
+      await createZone(newZoneName, newZoneDesc);
+      setShowZoneModal(false);
+      setNewZoneName('');
+      setNewZoneDesc('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to create zone';
+      alert('Error creating zone: ' + msg);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
   // Handle Add Asset
   const handleCreateAsset = async (e: FormEvent) => {
     e.preventDefault();
@@ -146,6 +170,9 @@ export default function AssetsPage() {
 
       if (error) throw error;
 
+      const initialNote =
+        type === 'livestock' ? 'Initial flock/herd registration' : 'Initial crop planting';
+
       // Record initial planting/birth event with logged_by required by RLS
       const { error: eventErr } = await supabase.from('operational_events').insert({
         farm_id: farm.id,
@@ -153,7 +180,7 @@ export default function AssetsPage() {
         logged_by: user.id,
         event_type: 'planting',
         quantity_affected: parseFloat(initialQty),
-        details: { notes: 'Initial batch registration' },
+        details: { notes: initialNote },
         offline_timestamp: nowIso,
       });
 
@@ -213,6 +240,21 @@ export default function AssetsPage() {
     }
   };
 
+  // Handle Zone Assignment / Reassignment
+  const handleUpdateZone = async (asset: Asset, newZoneId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('assets')
+        .update({ zone_id: newZoneId, updated_at: new Date().toISOString() })
+        .eq('id', asset.id);
+      if (error) throw error;
+      await loadData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to update zone assignment: ' + msg);
+    }
+  };
+
   // Handle Status Update (RLS allows UPDATE by Farm Managers; preserves audit history)
   const handleUpdateStatus = async (asset: Asset, newStatus: AssetStatus) => {
     try {
@@ -234,12 +276,21 @@ export default function AssetsPage() {
         <div>
           <h1 className={styles.title}>Asset Batches</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-            Track and monitor crops, livestock, and real-time inventory balances
+            Track and monitor crops, livestock, zone assignments, and real-time inventory balances
           </p>
         </div>
-        <button className={styles.primaryBtn} onClick={() => setShowAddModal(true)}>
-          <span>➕</span> Add New Batch
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            className={styles.actionBtn}
+            style={{ padding: '10px 16px', flex: '0 0 auto' }}
+            onClick={() => setShowZoneModal(true)}
+          >
+            📍 + New Zone
+          </button>
+          <button className={styles.primaryBtn} onClick={() => setShowAddModal(true)}>
+            <span>➕</span> Add New Batch
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Controls */}
@@ -302,8 +353,32 @@ export default function AssetsPage() {
                   </span>
                 </div>
 
-                <div className={styles.metaRow}>
-                  <span>📍 Zone: <strong>{asset.zone_name}</strong></span>
+                <div className={styles.metaRow} style={{ alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    📍 Zone:
+                    <select
+                      aria-label="Assign or change zone"
+                      value={asset.zone_id || ''}
+                      onChange={(e) => handleUpdateZone(asset, e.target.value || null)}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: 'var(--color-text)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="">Unassigned</option>
+                      {zones.map((z) => (
+                        <option key={z.id} value={z.id}>
+                          {z.name}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
                   <span>Unit: <strong>{asset.unit_of_measurement}</strong></span>
                 </div>
 
@@ -354,6 +429,54 @@ export default function AssetsPage() {
         </div>
       )}
 
+      {/* ─── Add Zone Modal ─── */}
+      {showZoneModal && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalContent}>
+            <h2 className={styles.modalTitle}>Register Farm Zone</h2>
+            <form onSubmit={handleCreateZone}>
+              <div className={styles.formGroup}>
+                <label>Zone Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Chicken Coop A, North Greenhouse, Pasture 2"
+                  value={newZoneName}
+                  onChange={(e) => setNewZoneName(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Description (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Enclosed barn, heated polytunnel"
+                  value={newZoneDesc}
+                  onChange={(e) => setNewZoneDesc(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.modalButtons}>
+                <button
+                  type="button"
+                  className={styles.cancelBtn}
+                  onClick={() => setShowZoneModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={styles.primaryBtn}
+                  disabled={formSubmitting}
+                >
+                  {formSubmitting ? 'Saving...' : 'Create Zone'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ─── Add Asset Modal ─── */}
       {showAddModal && (
         <div className={styles.modalBackdrop}>
@@ -374,14 +497,22 @@ export default function AssetsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className={styles.formGroup}>
                   <label>Type</label>
-                  <select value={type} onChange={(e) => setType(e.target.value as AssetType)}>
+                  <select
+                    value={type}
+                    onChange={(e) => {
+                      const nextType = e.target.value as AssetType;
+                      setType(nextType);
+                      if (nextType === 'livestock' && uom === 'kg') setUom('heads');
+                      if (nextType === 'crop' && uom === 'heads') setUom('kg');
+                    }}
+                  >
                     <option value="crop">🌾 Crop</option>
                     <option value="livestock">🐄 Livestock</option>
                   </select>
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Variety / Strain</label>
+                  <label>Variety / Breed</label>
                   <input
                     type="text"
                     required
@@ -459,13 +590,19 @@ export default function AssetsPage() {
               <div className={styles.formGroup}>
                 <label>Event Type</label>
                 <select value={eventType} onChange={(e) => setEventType(e.target.value as EventType)}>
-                  <option value="feeding">🌾 Feeding</option>
+                  <option value="feeding">
+                    {selectedAssetForEvent.type === 'crop' ? '🌾 Fertilize / Care' : '🌾 Feeding'}
+                  </option>
                   <option value="medication">💊 Medication / Treatment</option>
-                  <option value="harvest">🧺 Harvest</option>
+                  <option value="harvest">
+                    {selectedAssetForEvent.type === 'livestock' ? '🧺 Collection / Yield' : '🧺 Harvest'}
+                  </option>
                   <option value="attrition">📉 Loss / Attrition</option>
                   <option value="split">✂️ Split Batch</option>
                   <option value="sale">💰 Direct Sale</option>
-                  <option value="planting">🌱 Planting / Seedling</option>
+                  <option value="planting">
+                    {selectedAssetForEvent.type === 'livestock' ? '🐣 Birth / Restock' : '🌱 Planting / Seedling'}
+                  </option>
                 </select>
               </div>
 
@@ -490,7 +627,7 @@ export default function AssetsPage() {
                 <label>Field Notes / Details</label>
                 <textarea
                   rows={3}
-                  placeholder="Add observational notes, dosage, or harvest condition..."
+                  placeholder="Add observational notes, dosage, or condition..."
                   value={eventNotes}
                   onChange={(e) => setEventNotes(e.target.value)}
                 />
@@ -577,7 +714,10 @@ export default function AssetsPage() {
                         }}
                       >
                         <div>
-                          <strong style={{ textTransform: 'capitalize' }}>{ev.event_type}</strong>
+                          <strong>
+                            {getEventEmoji(ev.event_type, selectedAssetForHistory.type)}{' '}
+                            {getEventLabel(ev.event_type, selectedAssetForHistory.type)}
+                          </strong>
                           {Number(ev.quantity_affected) > 0 && (
                             <span style={{ color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                               ({ev.quantity_affected} {selectedAssetForHistory.unit_of_measurement})

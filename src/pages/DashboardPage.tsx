@@ -2,11 +2,21 @@ import { useEffect, useState, useCallback, type FormEvent } from 'react';
 import { useFarm } from '../hooks/useFarm';
 import { fetchFarmWeather, getWeatherConditionText, getWeatherEmoji } from '../services/weatherService';
 import { supabase } from '../lib/supabase';
-import { extractEventNotes, type WeatherData, type WeatherAlert, type OperationalEvent, type Asset } from '../types';
+import {
+  extractEventNotes,
+  getEventEmoji,
+  getEventLabel,
+  type WeatherData,
+  type WeatherAlert,
+  type OperationalEvent,
+  type Asset,
+  type AssetType,
+} from '../types';
 import styles from './DashboardPage.module.css';
 
 interface ActivityItem extends OperationalEvent {
   asset_name?: string;
+  asset_type?: AssetType;
 }
 
 export default function DashboardPage() {
@@ -58,7 +68,7 @@ export default function DashboardPage() {
     async function loadStatsAndActivity() {
       try {
         const [assetsRes, eventsRes] = await Promise.all([
-          supabase.from('assets').select('id, status').eq('farm_id', farmId),
+          supabase.from('assets').select('id, name, type, status').eq('farm_id', farmId),
           supabase
             .from('operational_events')
             .select('*')
@@ -67,7 +77,7 @@ export default function DashboardPage() {
             .limit(5),
         ]);
 
-        const assets = assetsRes.data || [];
+        const assets = (assetsRes.data || []) as Pick<Asset, 'id' | 'name' | 'type' | 'status'>[];
         const activeCount = assets.filter((a) => a.status === 'active').length;
 
         setStats({
@@ -77,21 +87,19 @@ export default function DashboardPage() {
 
         const eventsData = eventsRes.data;
         if (eventsData && eventsData.length > 0) {
-          const assetIds = Array.from(new Set(eventsData.map((e) => e.asset_id)));
-          const { data: assetNames } = await supabase
-            .from('assets')
-            .select('id, name')
-            .in('id', assetIds);
-
-          const assetMap = new Map<string, string>();
-          (assetNames || []).forEach((a: Partial<Asset>) => {
-            if (a.id && a.name) assetMap.set(a.id, a.name);
+          const assetMap = new Map<string, { name: string; type: AssetType }>();
+          assets.forEach((a) => {
+            assetMap.set(a.id, { name: a.name, type: a.type });
           });
 
-          const enriched = eventsData.map((ev: OperationalEvent) => ({
-            ...ev,
-            asset_name: assetMap.get(ev.asset_id) || 'Unknown Batch',
-          }));
+          const enriched = eventsData.map((ev: OperationalEvent) => {
+            const meta = assetMap.get(ev.asset_id);
+            return {
+              ...ev,
+              asset_name: meta?.name || 'Unknown Batch',
+              asset_type: meta?.type,
+            };
+          });
 
           setRecentActivities(enriched);
         } else {
@@ -152,19 +160,6 @@ export default function DashboardPage() {
       alert('Error creating zone: ' + msg);
     } finally {
       setZoneSubmitting(false);
-    }
-  };
-
-  const getEventEmoji = (type: string) => {
-    switch (type) {
-      case 'planting': return '🌱';
-      case 'feeding': return '🌾';
-      case 'medication': return '💊';
-      case 'harvest': return '🧺';
-      case 'attrition': return '📉';
-      case 'split': return '✂️';
-      case 'sale': return '💰';
-      default: return '📋';
     }
   };
 
@@ -320,9 +315,9 @@ export default function DashboardPage() {
               const notes = extractEventNotes(event.details);
               return (
                 <div key={event.id} className={styles.eventRow}>
-                  <span className={styles.eventIcon}>{getEventEmoji(event.event_type)}</span>
+                  <span className={styles.eventIcon}>{getEventEmoji(event.event_type, event.asset_type)}</span>
                   <div className={styles.eventInfo}>
-                    <strong>{event.asset_name}</strong>: {event.event_type.toUpperCase()} ({event.quantity_affected} affected)
+                    <strong>{event.asset_name}</strong>: {getEventLabel(event.event_type, event.asset_type).toUpperCase()} ({event.quantity_affected} affected)
                     {notes && (
                       <span style={{ color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                         — &ldquo;{notes}&rdquo;
