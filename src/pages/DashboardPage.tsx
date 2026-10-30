@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, type FormEvent } from 'react';
 import { useFarm } from '../hooks/useFarm';
+import { useLanguage } from '../hooks/useLanguage';
 import { fetchFarmWeather, getWeatherConditionText, getWeatherEmoji } from '../services/weatherService';
 import { supabase } from '../lib/supabase';
 import {
@@ -21,6 +22,7 @@ interface ActivityItem extends OperationalEvent {
 
 export default function DashboardPage() {
   const { farm, zones, loading: farmLoading, error: farmError, updateCoordinates, createZone } = useFarm();
+  const { t } = useLanguage();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [alerts, setAlerts] = useState<WeatherAlert[]>([]);
   const [weatherLoading, setWeatherLoading] = useState(true);
@@ -164,7 +166,7 @@ export default function DashboardPage() {
   };
 
   if (farmLoading) {
-    return <div className={styles.loading}>Loading farm details...</div>;
+    return <div className={styles.loading}>Loading...</div>;
   }
 
   if (farmError) {
@@ -175,9 +177,11 @@ export default function DashboardPage() {
     <div className={styles.page}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 className={styles.pageTitle} style={{ marginBottom: 4 }}>{farm?.name || 'My Farm'} Dashboard</h1>
+          <h1 className={styles.pageTitle} style={{ marginBottom: 4 }}>
+            {farm?.name || 'My Farm'} — {t('dashboardTitle')}
+          </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-            Location: {farm?.latitude != null ? `${farm.latitude}°, ${farm.longitude}°` : 'Default Region (Transylvania)'}
+            {t('location')}: {farm?.latitude != null ? `${farm.latitude}°, ${farm.longitude}°` : t('defaultRegion')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -195,7 +199,7 @@ export default function DashboardPage() {
               gap: 6,
             }}
           >
-            ➕ Add Farm Zone
+            ➕ {t('addFarmZone')}
           </button>
           <button
             onClick={handleDetectLocation}
@@ -213,7 +217,7 @@ export default function DashboardPage() {
               gap: 8,
             }}
           >
-            📍 {updatingLocation ? 'Detecting GPS...' : 'Update Farm GPS'}
+            📍 {updatingLocation ? t('detectingGps') : t('updateGps')}
           </button>
         </div>
       </div>
@@ -224,7 +228,7 @@ export default function DashboardPage() {
           <div className={`${styles.summaryIcon} ${styles.green}`}>🌿</div>
           <div className={styles.summaryInfo}>
             <h3>{statsLoading ? '...' : stats.totalAssets}</h3>
-            <p>Total Asset Batches</p>
+            <p>{t('totalAssetBatches')}</p>
           </div>
         </div>
 
@@ -232,7 +236,7 @@ export default function DashboardPage() {
           <div className={`${styles.summaryIcon} ${styles.orange}`}>🚜</div>
           <div className={styles.summaryInfo}>
             <h3>{statsLoading ? '...' : stats.activeBatches}</h3>
-            <p>Active Batches</p>
+            <p>{t('activeBatches')}</p>
           </div>
         </div>
 
@@ -240,7 +244,7 @@ export default function DashboardPage() {
           <div className={`${styles.summaryIcon} ${styles.blue}`}>📍</div>
           <div className={styles.summaryInfo}>
             <h3>{zones.length}</h3>
-            <p>Registered Zones</p>
+            <p>{t('registeredZones')}</p>
           </div>
         </div>
 
@@ -248,7 +252,7 @@ export default function DashboardPage() {
           <div className={`${styles.summaryIcon} ${styles.purple}`}>🌤️</div>
           <div className={styles.summaryInfo}>
             <h3>{weather ? `${Math.round(weather.temperature)}°C` : '...'}</h3>
-            <p>Current Temperature</p>
+            <p>{t('currentTemp')}</p>
           </div>
         </div>
       </div>
@@ -262,9 +266,9 @@ export default function DashboardPage() {
 
       {/* Weather Station Section */}
       <div className={styles.weatherSection}>
-        <h2>Weather Station & 7-Day Forecast</h2>
+        <h2>{t('weatherStationTitle')}</h2>
         {weatherLoading ? (
-          <div className={styles.loading}>Fetching live weather telemetry...</div>
+          <div className={styles.loading}>{t('fetchingWeather')}</div>
         ) : weatherError ? (
           <div className={styles.error}>{weatherError}</div>
         ) : weather ? (
@@ -274,10 +278,10 @@ export default function DashboardPage() {
                 {Math.round(weather.temperature)}°C
               </div>
               <div className={styles.weatherDetails}>
-                <div><strong>Condition:</strong> {getWeatherConditionText(weather.weatherCode)}</div>
-                <div><strong>Humidity:</strong> {weather.humidity}%</div>
-                <div><strong>Wind Speed:</strong> {weather.windSpeed} km/h</div>
-                <div><strong>Precipitation:</strong> {weather.precipitation} mm</div>
+                <div><strong>{t('condition')}:</strong> {getWeatherConditionText(weather.weatherCode)}</div>
+                <div><strong>{t('humidity')}:</strong> {weather.humidity}%</div>
+                <div><strong>{t('windSpeed')}:</strong> {weather.windSpeed} km/h</div>
+                <div><strong>{t('precipitation')}:</strong> {weather.precipitation} mm</div>
               </div>
             </div>
 
@@ -305,11 +309,11 @@ export default function DashboardPage() {
 
       {/* Recent Operational Events Activity */}
       <div className={styles.recentSection}>
-        <h2>Recent Field Activity</h2>
+        <h2>{t('recentActivityTitle')}</h2>
         {statsLoading ? (
-          <div className={styles.loading}>Loading activities...</div>
+          <div className={styles.loading}>{t('loadingActivities')}</div>
         ) : recentActivities.length === 0 ? (
-          <div className={styles.emptyState}>No field events recorded yet. Log an event from the Assets tab.</div>
+          <div className={styles.emptyState}>{t('noRecentActivity')}</div>
         ) : (
           <div>
             {recentActivities.map((event) => {
@@ -318,7 +322,7 @@ export default function DashboardPage() {
                 <div key={event.id} className={styles.eventRow}>
                   <span className={styles.eventIcon}>{getEventEmoji(event.event_type, event.asset_type)}</span>
                   <div className={styles.eventInfo}>
-                    <strong>{event.asset_name}</strong>: {getEventLabel(event.event_type, event.asset_type).toUpperCase()} ({event.quantity_affected} affected)
+                    <strong>{event.asset_name}</strong>: {getEventLabel(event.event_type, event.asset_type, t).toUpperCase()} ({event.quantity_affected} {t('affected')})
                     {notes && (
                       <span style={{ color: 'var(--color-text-secondary)', marginLeft: 8 }}>
                         — &ldquo;{notes}&rdquo;
@@ -360,16 +364,16 @@ export default function DashboardPage() {
               boxShadow: 'var(--shadow-lg)',
             }}
           >
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>Register Farm Zone</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 16 }}>{t('registerZoneTitle')}</h2>
             <form onSubmit={handleCreateZone}>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-                  Zone Name
+                  {t('zoneNameLabel')}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. North Greenhouse, Barn B"
+                  placeholder={t('zoneNamePlaceholder')}
                   value={zoneName}
                   onChange={(e) => setZoneName(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}
@@ -377,11 +381,11 @@ export default function DashboardPage() {
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-                  Description (Optional)
+                  {t('zoneDescLabel')}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Heated polytunnel, 500 sq meters"
+                  placeholder={t('zoneDescPlaceholder')}
                   value={zoneDescription}
                   onChange={(e) => setZoneDescription(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}
@@ -393,14 +397,14 @@ export default function DashboardPage() {
                   onClick={() => setShowZoneModal(false)}
                   style={{ padding: '10px 16px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', background: 'transparent', fontWeight: 600, color: 'var(--color-text-secondary)' }}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={zoneSubmitting}
                   style={{ padding: '10px 16px', borderRadius: 'var(--radius)', background: 'var(--color-primary)', color: 'white', fontWeight: 600 }}
                 >
-                  {zoneSubmitting ? 'Saving...' : 'Create Zone'}
+                  {zoneSubmitting ? t('saving') : t('createZoneBtn')}
                 </button>
               </div>
             </form>

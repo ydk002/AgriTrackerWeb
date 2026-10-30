@@ -182,7 +182,32 @@ export function getEventEmoji(eventType: string, assetType?: AssetType): string 
   }
 }
 
-export function getEventLabel(eventType: string, assetType?: AssetType): string {
+export function getEventLabel(
+  eventType: string,
+  assetType?: AssetType,
+  t?: (key: string) => string
+): string {
+  if (t) {
+    switch (eventType) {
+      case 'planting':
+        return assetType === 'livestock' ? t('event_planting_livestock') : t('event_planting_crop');
+      case 'feeding':
+        return assetType === 'crop' ? t('event_feeding_crop') : t('event_feeding_livestock');
+      case 'medication':
+        return t('event_medication');
+      case 'harvest':
+        return assetType === 'livestock' ? t('event_harvest_livestock') : t('event_harvest_crop');
+      case 'attrition':
+        return t('event_attrition');
+      case 'split':
+        return t('event_split');
+      case 'sale':
+        return t('event_sale');
+      default:
+        return eventType;
+    }
+  }
+
   switch (eventType) {
     case 'planting':
       return assetType === 'livestock' ? 'Birth / Restock' : 'Planting';

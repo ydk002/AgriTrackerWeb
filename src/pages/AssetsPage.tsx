@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, type FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFarm } from '../hooks/useFarm';
+import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 import {
   extractEventNotes,
@@ -20,6 +21,7 @@ import styles from './AssetsPage.module.css';
 export default function AssetsPage() {
   const { user } = useAuth();
   const { farm, zones, createZone } = useFarm();
+  const { t } = useLanguage();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [events, setEvents] = useState<OperationalEvent[]>([]);
   const [allocations, setAllocations] = useState<LedgerAllocation[]>([]);
@@ -97,10 +99,10 @@ export default function AssetsPage() {
       return {
         ...asset,
         remaining_quantity: remaining,
-        zone_name: asset.zone_id ? zoneMap.get(asset.zone_id) || 'Unassigned' : 'Unassigned',
+        zone_name: asset.zone_id ? zoneMap.get(asset.zone_id) || t('unassigned') : t('unassigned'),
       };
     });
-  }, [assets, events, zones]);
+  }, [assets, events, zones, t]);
 
   // Filtered list
   const filteredAssets = useMemo(() => {
@@ -173,7 +175,6 @@ export default function AssetsPage() {
       const initialNote =
         type === 'livestock' ? 'Initial flock/herd registration' : 'Initial crop planting';
 
-      // Record initial planting/birth event with logged_by required by RLS
       const { error: eventErr } = await supabase.from('operational_events').insert({
         farm_id: farm.id,
         asset_id: data.id,
@@ -255,7 +256,7 @@ export default function AssetsPage() {
     }
   };
 
-  // Handle Status Update (RLS allows UPDATE by Farm Managers; preserves audit history)
+  // Handle Status Update
   const handleUpdateStatus = async (asset: Asset, newStatus: AssetStatus) => {
     try {
       const { error } = await supabase
@@ -274,9 +275,9 @@ export default function AssetsPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Asset Batches</h1>
+          <h1 className={styles.title}>{t('assetBatchesTitle')}</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-            Track and monitor crops, livestock, zone assignments, and real-time inventory balances
+            {t('assetBatchesSubtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -285,10 +286,10 @@ export default function AssetsPage() {
             style={{ padding: '10px 16px', flex: '0 0 auto' }}
             onClick={() => setShowZoneModal(true)}
           >
-            📍 + New Zone
+            📍 {t('newZoneBtn')}
           </button>
           <button className={styles.primaryBtn} onClick={() => setShowAddModal(true)}>
-            <span>➕</span> Add New Batch
+            <span>➕</span> {t('addNewBatchBtn')}
           </button>
         </div>
       </div>
@@ -298,7 +299,7 @@ export default function AssetsPage() {
         <input
           type="text"
           className={styles.searchInput}
-          placeholder="Search by batch name or variety..."
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -308,9 +309,9 @@ export default function AssetsPage() {
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as 'all' | 'crop' | 'livestock')}
         >
-          <option value="all">All Types</option>
-          <option value="crop">🌾 Crops</option>
-          <option value="livestock">🐄 Livestock</option>
+          <option value="all">{t('allTypes')}</option>
+          <option value="crop">🌾 {t('crops')}</option>
+          <option value="livestock">🐄 {t('livestock')}</option>
         </select>
 
         <select
@@ -318,21 +319,19 @@ export default function AssetsPage() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'harvested' | 'disposed' | 'split')}
         >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="harvested">Harvested</option>
-          <option value="split">Split</option>
-          <option value="disposed">Disposed</option>
+          <option value="all">{t('allStatuses')}</option>
+          <option value="active">{t('active')}</option>
+          <option value="harvested">{t('harvested')}</option>
+          <option value="split">{t('split')}</option>
+          <option value="disposed">{t('disposed')}</option>
         </select>
       </div>
 
       {/* Asset Cards Grid */}
       {loading ? (
-        <div className={styles.emptyState}>Loading asset batches...</div>
+        <div className={styles.emptyState}>{t('loadingAssets')}</div>
       ) : filteredAssets.length === 0 ? (
-        <div className={styles.emptyState}>
-          No assets found matching your filter criteria. Click &ldquo;Add New Batch&rdquo; to register crops or livestock.
-        </div>
+        <div className={styles.emptyState}>{t('noAssetsFound')}</div>
       ) : (
         <div className={styles.grid}>
           {filteredAssets.map((asset) => (
@@ -349,13 +348,13 @@ export default function AssetsPage() {
                     <div className={styles.assetVariety}>{asset.variety}</div>
                   </div>
                   <span className={`${styles.badge} ${styles[asset.status]}`}>
-                    {asset.status}
+                    {t(asset.status)}
                   </span>
                 </div>
 
                 <div className={styles.metaRow} style={{ alignItems: 'center' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    📍 Zone:
+                    📍 {t('zone')}:
                     <select
                       aria-label="Assign or change zone"
                       value={asset.zone_id || ''}
@@ -371,7 +370,7 @@ export default function AssetsPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      <option value="">Unassigned</option>
+                      <option value="">{t('unassigned')}</option>
                       {zones.map((z) => (
                         <option key={z.id} value={z.id}>
                           {z.name}
@@ -379,18 +378,18 @@ export default function AssetsPage() {
                       ))}
                     </select>
                   </span>
-                  <span>Unit: <strong>{asset.unit_of_measurement}</strong></span>
+                  <span>{t('unit')}: <strong>{asset.unit_of_measurement}</strong></span>
                 </div>
 
                 <div className={styles.metrics}>
                   <div className={styles.metricItem}>
-                    <p>Current Balance</p>
+                    <p>{t('currentBalance')}</p>
                     <span style={{ color: asset.remaining_quantity > 0 ? 'var(--color-primary)' : 'var(--color-error)' }}>
                       {asset.remaining_quantity.toLocaleString()} {asset.unit_of_measurement}
                     </span>
                   </div>
                   <div className={styles.metricItem}>
-                    <p>Initial Size</p>
+                    <p>{t('initialSize')}</p>
                     <span>
                       {Number(asset.initial_quantity).toLocaleString()} {asset.unit_of_measurement}
                     </span>
@@ -403,13 +402,13 @@ export default function AssetsPage() {
                   className={`${styles.actionBtn} ${styles.primary}`}
                   onClick={() => setSelectedAssetForEvent(asset)}
                 >
-                  📝 Log Event
+                  📝 {t('logEventBtn')}
                 </button>
                 <button
                   className={styles.actionBtn}
                   onClick={() => setSelectedAssetForHistory(asset)}
                 >
-                  📜 Details & History
+                  📜 {t('detailsHistoryBtn')}
                 </button>
                 <select
                   aria-label="Update batch status"
@@ -418,10 +417,10 @@ export default function AssetsPage() {
                   value={asset.status}
                   onChange={(e) => handleUpdateStatus(asset, e.target.value as AssetStatus)}
                 >
-                  <option value="active">Active</option>
-                  <option value="harvested">Harvested</option>
-                  <option value="split">Split</option>
-                  <option value="disposed">Disposed</option>
+                  <option value="active">{t('active')}</option>
+                  <option value="harvested">{t('harvested')}</option>
+                  <option value="split">{t('split')}</option>
+                  <option value="disposed">{t('disposed')}</option>
                 </select>
               </div>
             </div>
@@ -433,24 +432,24 @@ export default function AssetsPage() {
       {showZoneModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Register Farm Zone</h2>
+            <h2 className={styles.modalTitle}>{t('registerZoneTitle')}</h2>
             <form onSubmit={handleCreateZone}>
               <div className={styles.formGroup}>
-                <label>Zone Name</label>
+                <label>{t('zoneNameLabel')}</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Chicken Coop A, North Greenhouse, Pasture 2"
+                  placeholder={t('zoneNamePlaceholder')}
                   value={newZoneName}
                   onChange={(e) => setNewZoneName(e.target.value)}
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label>Description (Optional)</label>
+                <label>{t('zoneDescLabel')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Enclosed barn, heated polytunnel"
+                  placeholder={t('zoneDescPlaceholder')}
                   value={newZoneDesc}
                   onChange={(e) => setNewZoneDesc(e.target.value)}
                 />
@@ -462,14 +461,14 @@ export default function AssetsPage() {
                   className={styles.cancelBtn}
                   onClick={() => setShowZoneModal(false)}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className={styles.primaryBtn}
                   disabled={formSubmitting}
                 >
-                  {formSubmitting ? 'Saving...' : 'Create Zone'}
+                  {formSubmitting ? t('saving') : t('createZoneBtn')}
                 </button>
               </div>
             </form>
@@ -481,14 +480,14 @@ export default function AssetsPage() {
       {showAddModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Register New Batch</h2>
+            <h2 className={styles.modalTitle}>{t('registerBatchTitle')}</h2>
             <form onSubmit={handleCreateAsset}>
               <div className={styles.formGroup}>
-                <label>Asset Name</label>
+                <label>{t('assetNameLabel')}</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Field A Corn, Flock 4 Broilers"
+                  placeholder={t('assetNamePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -496,7 +495,7 @@ export default function AssetsPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className={styles.formGroup}>
-                  <label>Type</label>
+                  <label>{t('typeLabel')}</label>
                   <select
                     value={type}
                     onChange={(e) => {
@@ -506,17 +505,17 @@ export default function AssetsPage() {
                       if (nextType === 'crop' && uom === 'heads') setUom('kg');
                     }}
                   >
-                    <option value="crop">🌾 Crop</option>
-                    <option value="livestock">🐄 Livestock</option>
+                    <option value="crop">🌾 {t('cropOption')}</option>
+                    <option value="livestock">🐄 {t('livestockOption')}</option>
                   </select>
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Variety / Breed</label>
+                  <label>{t('varietyLabel')}</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Golden Bantam, Cobb 500"
+                    placeholder={t('varietyPlaceholder')}
                     value={variety}
                     onChange={(e) => setVariety(e.target.value)}
                   />
@@ -525,20 +524,20 @@ export default function AssetsPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className={styles.formGroup}>
-                  <label>Initial Quantity</label>
+                  <label>{t('initialQtyLabel')}</label>
                   <input
                     type="number"
                     step="any"
                     min="0.01"
                     required
-                    placeholder="e.g. 500"
+                    placeholder="500"
                     value={initialQty}
                     onChange={(e) => setInitialQty(e.target.value)}
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Unit of Measure</label>
+                  <label>{t('uomLabel')}</label>
                   <select value={uom} onChange={(e) => setUom(e.target.value)}>
                     <option value="kg">kg</option>
                     <option value="pcs">pcs</option>
@@ -549,9 +548,9 @@ export default function AssetsPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Zone Location</label>
+                <label>{t('zoneLocationLabel')}</label>
                 <select value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
-                  <option value="">-- No Zone Assigned --</option>
+                  <option value="">{t('noZoneAssigned')}</option>
                   {zones.map((z) => (
                     <option key={z.id} value={z.id}>
                       {z.name} {z.description ? `(${z.description})` : ''}
@@ -566,14 +565,14 @@ export default function AssetsPage() {
                   className={styles.cancelBtn}
                   onClick={() => setShowAddModal(false)}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className={styles.primaryBtn}
                   disabled={formSubmitting}
                 >
-                  {formSubmitting ? 'Creating...' : 'Create Batch'}
+                  {formSubmitting ? t('creating') : t('createBatchBtn')}
                 </button>
               </div>
             </form>
@@ -585,32 +584,34 @@ export default function AssetsPage() {
       {selectedAssetForEvent && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Log Event: {selectedAssetForEvent.name}</h2>
+            <h2 className={styles.modalTitle}>
+              {t('logEventTitle')}: {selectedAssetForEvent.name}
+            </h2>
             <form onSubmit={handleLogEvent}>
               <div className={styles.formGroup}>
-                <label>Event Type</label>
+                <label>{t('eventTypeLabel')}</label>
                 <select value={eventType} onChange={(e) => setEventType(e.target.value as EventType)}>
                   <option value="feeding">
-                    {selectedAssetForEvent.type === 'crop' ? '🌾 Fertilize / Care' : '🌾 Feeding'}
+                    🌾 {selectedAssetForEvent.type === 'crop' ? t('event_feeding_crop') : t('event_feeding_livestock')}
                   </option>
-                  <option value="medication">💊 Medication / Treatment</option>
+                  <option value="medication">💊 {t('event_medication')}</option>
                   <option value="harvest">
-                    {selectedAssetForEvent.type === 'livestock' ? '🧺 Collection / Yield' : '🧺 Harvest'}
+                    🧺 {selectedAssetForEvent.type === 'livestock' ? t('event_harvest_livestock') : t('event_harvest_crop')}
                   </option>
-                  <option value="attrition">📉 Loss / Attrition</option>
-                  <option value="split">✂️ Split Batch</option>
-                  <option value="sale">💰 Direct Sale</option>
+                  <option value="attrition">📉 {t('event_attrition')}</option>
+                  <option value="split">✂️ {t('event_split')}</option>
+                  <option value="sale">💰 {t('event_sale')}</option>
                   <option value="planting">
-                    {selectedAssetForEvent.type === 'livestock' ? '🐣 Birth / Restock' : '🌱 Planting / Seedling'}
+                    {selectedAssetForEvent.type === 'livestock' ? `🐣 ${t('event_planting_livestock')}` : `🌱 ${t('event_planting_crop')}`}
                   </option>
                 </select>
               </div>
 
               <div className={styles.formGroup}>
                 <label>
-                  Quantity Affected ({selectedAssetForEvent.unit_of_measurement})
+                  {t('qtyAffectedLabel')} ({selectedAssetForEvent.unit_of_measurement})
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginLeft: 8 }}>
-                    (0 for feeding/medication, quantity reduced for harvest/loss)
+                    {t('qtyAffectedHint')}
                   </span>
                 </label>
                 <input
@@ -624,10 +625,10 @@ export default function AssetsPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Field Notes / Details</label>
+                <label>{t('fieldNotesLabel')}</label>
                 <textarea
                   rows={3}
-                  placeholder="Add observational notes, dosage, or condition..."
+                  placeholder={t('fieldNotesPlaceholder')}
                   value={eventNotes}
                   onChange={(e) => setEventNotes(e.target.value)}
                 />
@@ -639,14 +640,14 @@ export default function AssetsPage() {
                   className={styles.cancelBtn}
                   onClick={() => setSelectedAssetForEvent(null)}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className={styles.primaryBtn}
                   disabled={formSubmitting}
                 >
-                  {formSubmitting ? 'Recording...' : 'Record Event'}
+                  {formSubmitting ? t('recording') : t('recordEventBtn')}
                 </button>
               </div>
             </form>
@@ -661,7 +662,9 @@ export default function AssetsPage() {
         return (
           <div className={styles.modalBackdrop}>
             <div className={styles.modalContent}>
-              <h2 className={styles.modalTitle}>{selectedAssetForHistory.name} — Details</h2>
+              <h2 className={styles.modalTitle}>
+                {selectedAssetForHistory.name} — {t('detailsSuffix')}
+              </h2>
 
               {/* Unit Economics Summary */}
               <div
@@ -678,26 +681,26 @@ export default function AssetsPage() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Allocated Cost</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{t('allocatedCost')}</div>
                   <div style={{ fontWeight: 700, color: 'var(--color-secondary)' }}>{fin.allocatedCost.toFixed(2)} RON</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Sales Revenue</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{t('salesRevenue')}</div>
                   <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{fin.totalRevenue.toFixed(2)} RON</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Net Profit</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{t('netProfit')}</div>
                   <div style={{ fontWeight: 700, color: fin.profitability >= 0 ? 'var(--color-primary)' : 'var(--color-error)' }}>
                     {fin.profitability >= 0 ? '+' : ''}{fin.profitability.toFixed(2)} RON
                   </div>
                 </div>
               </div>
 
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>Operational Event Timeline</h3>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>{t('eventTimelineTitle')}</h3>
               <div style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 20 }}>
                 {batchEvents.length === 0 ? (
                   <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 20 }}>
-                    No events recorded for this batch yet.
+                    {t('noEventsRecorded')}
                   </p>
                 ) : (
                   batchEvents.map((ev) => {
@@ -716,7 +719,7 @@ export default function AssetsPage() {
                         <div>
                           <strong>
                             {getEventEmoji(ev.event_type, selectedAssetForHistory.type)}{' '}
-                            {getEventLabel(ev.event_type, selectedAssetForHistory.type)}
+                            {getEventLabel(ev.event_type, selectedAssetForHistory.type, t)}
                           </strong>
                           {Number(ev.quantity_affected) > 0 && (
                             <span style={{ color: 'var(--color-text-secondary)', marginLeft: 8 }}>
@@ -740,7 +743,7 @@ export default function AssetsPage() {
                   className={styles.cancelBtn}
                   onClick={() => setSelectedAssetForHistory(null)}
                 >
-                  Close
+                  {t('close')}
                 </button>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, type FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useFarm } from '../hooks/useFarm';
+import { useLanguage } from '../hooks/useLanguage';
 import { supabase } from '../lib/supabase';
 import type { VaultItem, LedgerAllocation, Sale, SpoilageLog, Asset, SpoilageReason } from '../types';
 import styles from './LedgerPage.module.css';
@@ -10,6 +11,7 @@ type LedgerTab = 'vault' | 'allocations' | 'sales' | 'spoilage';
 export default function LedgerPage() {
   const { user } = useAuth();
   const { farm } = useFarm();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<LedgerTab>('vault');
   const [loading, setLoading] = useState(true);
 
@@ -137,7 +139,7 @@ export default function LedgerPage() {
     }
   };
 
-  // 2. Handle Allocation (PostgreSQL trigger trg_calculate_ledger_allocation computes cost & deducts vault stock)
+  // 2. Handle Allocation
   const handleAllocate = async (e: FormEvent) => {
     e.preventDefault();
     if (!farm || !user) return;
@@ -205,7 +207,6 @@ export default function LedgerPage() {
 
       if (saleErr) throw saleErr;
 
-      // Also record operational event with logged_by to reduce asset remaining quantity
       const { error: eventErr } = await supabase.from('operational_events').insert({
         farm_id: farm.id,
         asset_id: saleAssetId,
@@ -231,7 +232,7 @@ export default function LedgerPage() {
     }
   };
 
-  // 4. Handle Spoilage (PostgreSQL trigger trg_calculate_spoilage computes loss & deducts vault stock)
+  // 4. Handle Spoilage
   const handleSpoilage = async (e: FormEvent) => {
     e.preventDefault();
     if (!farm || !user) return;
@@ -278,24 +279,24 @@ export default function LedgerPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.title}>Financial Ledger</h1>
+          <h1 className={styles.title}>{t('ledgerTitle')}</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-            Vault inventory, batch cost allocations, sales, and profit analytics
+            {t('ledgerSubtitle')}
           </p>
         </div>
 
         <div className={styles.headerActions}>
           <button className={styles.primaryBtn} onClick={() => setShowPurchaseModal(true)}>
-            <span>🛒</span> Purchase Supply
+            <span>🛒</span> {t('purchaseSupplyBtn')}
           </button>
           <button className={styles.secondaryBtn} onClick={() => setShowAllocateModal(true)}>
-            <span>⚖️</span> Allocate to Batch
+            <span>⚖️</span> {t('allocateBatchBtn')}
           </button>
           <button className={styles.secondaryBtn} onClick={() => setShowSaleModal(true)}>
-            <span>💰</span> Record Sale
+            <span>💰</span> {t('recordSaleBtn')}
           </button>
           <button className={styles.secondaryBtn} onClick={() => setShowSpoilageModal(true)}>
-            <span>⚠️</span> Log Spoilage
+            <span>⚠️</span> {t('logSpoilageBtn')}
           </button>
         </div>
       </div>
@@ -303,27 +304,27 @@ export default function LedgerPage() {
       {/* KPI Overview Cards */}
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
-          <p>Total Supply Purchases</p>
+          <p>{t('totalSupplyPurchases')}</p>
           <h2 style={{ color: '#d32f2f' }}>{totalSupplyPurchases.toFixed(2)} RON</h2>
         </div>
 
         <div className={styles.kpiCard}>
-          <p>Vault Inventory On-Hand</p>
+          <p>{t('vaultInventoryOnHand')}</p>
           <h2 style={{ color: '#1976d2' }}>{inventoryVaultValue.toFixed(2)} RON</h2>
         </div>
 
         <div className={styles.kpiCard}>
-          <p>Total Sales Revenue</p>
+          <p>{t('totalSalesRevenue')}</p>
           <h2 style={{ color: '#388e3c' }}>{totalSalesRevenue.toFixed(2)} RON</h2>
         </div>
 
         <div className={styles.kpiCard}>
-          <p>Total Spoilage Losses</p>
+          <p>{t('totalSpoilageLosses')}</p>
           <h2 style={{ color: '#c62828' }}>-{totalSpoilageLoss.toFixed(2)} RON</h2>
         </div>
 
         <div className={styles.kpiCard}>
-          <p>Net Farm Margin</p>
+          <p>{t('netFarmMargin')}</p>
           <h2 style={{ color: netFarmMargin >= 0 ? 'var(--color-primary)' : 'var(--color-error)' }}>
             {netFarmMargin >= 0 ? '+' : ''}{netFarmMargin.toFixed(2)} RON
           </h2>
@@ -336,25 +337,25 @@ export default function LedgerPage() {
           className={`${styles.tab} ${activeTab === 'vault' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('vault')}
         >
-          📦 Vault Inventory ({vaultItems.length})
+          📦 {t('vaultTab')} ({vaultItems.length})
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'allocations' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('allocations')}
         >
-          ⚖️ Cost Allocations ({allocations.length})
+          ⚖️ {t('allocationsTab')} ({allocations.length})
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'sales' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('sales')}
         >
-          💰 Sales Records ({sales.length})
+          💰 {t('salesTab')} ({sales.length})
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'spoilage' ? styles.tabActive : ''}`}
           onClick={() => setActiveTab('spoilage')}
         >
-          🗑️ Spoilage ({spoilageLogs.length})
+          🗑️ {t('spoilageTab')} ({spoilageLogs.length})
         </button>
       </div>
 
@@ -362,19 +363,19 @@ export default function LedgerPage() {
       {activeTab === 'vault' && (
         <div className={styles.tableWrapper}>
           {loading ? (
-            <div className={styles.emptyState}>Loading vault inventory...</div>
+            <div className={styles.emptyState}>Loading...</div>
           ) : vaultItems.length === 0 ? (
-            <div className={styles.emptyState}>No bulk supplies registered. Click &ldquo;Purchase Supply&rdquo; above.</div>
+            <div className={styles.emptyState}>{t('noVaultItems')}</div>
           ) : (
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Item Name</th>
-                  <th>Stock Remaining</th>
-                  <th>Purchased Qty</th>
-                  <th>Unit Cost</th>
-                  <th>Total Cost</th>
-                  <th>Registered</th>
+                  <th>{t('itemNameCol')}</th>
+                  <th>{t('stockRemainingCol')}</th>
+                  <th>{t('purchasedQtyCol')}</th>
+                  <th>{t('unitCostCol')}</th>
+                  <th>{t('totalCostCol')}</th>
+                  <th>{t('registeredCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -402,18 +403,18 @@ export default function LedgerPage() {
       {activeTab === 'allocations' && (
         <div className={styles.tableWrapper}>
           {loading ? (
-            <div className={styles.emptyState}>Loading allocations...</div>
+            <div className={styles.emptyState}>Loading...</div>
           ) : allocations.length === 0 ? (
-            <div className={styles.emptyState}>No cost allocations recorded yet.</div>
+            <div className={styles.emptyState}>{t('noAllocations')}</div>
           ) : (
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Supply Item</th>
-                  <th>Allocated To Batch</th>
-                  <th>Quantity Allocated</th>
-                  <th>Allocated Cost</th>
-                  <th>Date</th>
+                  <th>{t('supplyItemCol')}</th>
+                  <th>{t('allocatedToCol')}</th>
+                  <th>{t('qtyAllocatedCol')}</th>
+                  <th>{t('allocatedCostCol')}</th>
+                  <th>{t('dateCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -436,18 +437,18 @@ export default function LedgerPage() {
       {activeTab === 'sales' && (
         <div className={styles.tableWrapper}>
           {loading ? (
-            <div className={styles.emptyState}>Loading sales records...</div>
+            <div className={styles.emptyState}>Loading...</div>
           ) : sales.length === 0 ? (
-            <div className={styles.emptyState}>No sales recorded yet. Click &ldquo;Record Sale&rdquo; to register revenue.</div>
+            <div className={styles.emptyState}>{t('noSales')}</div>
           ) : (
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Asset Sold</th>
-                  <th>Quantity Sold</th>
-                  <th>Unit Price</th>
-                  <th>Total Revenue</th>
-                  <th>Date</th>
+                  <th>{t('assetSoldCol')}</th>
+                  <th>{t('qtySoldCol')}</th>
+                  <th>{t('unitPriceCol')}</th>
+                  <th>{t('totalRevenueCol')}</th>
+                  <th>{t('dateCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -473,18 +474,18 @@ export default function LedgerPage() {
       {activeTab === 'spoilage' && (
         <div className={styles.tableWrapper}>
           {loading ? (
-            <div className={styles.emptyState}>Loading spoilage logs...</div>
+            <div className={styles.emptyState}>Loading...</div>
           ) : spoilageLogs.length === 0 ? (
-            <div className={styles.emptyState}>No spoilage or wasted supply reported.</div>
+            <div className={styles.emptyState}>{t('noSpoilage')}</div>
           ) : (
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Supply Item</th>
-                  <th>Quantity Spoiled</th>
-                  <th>Reason</th>
-                  <th>Financial Loss</th>
-                  <th>Date</th>
+                  <th>{t('supplyItemCol')}</th>
+                  <th>{t('qtySpoiledCol')}</th>
+                  <th>{t('reasonCol')}</th>
+                  <th>{t('financialLossCol')}</th>
+                  <th>{t('dateCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -492,7 +493,7 @@ export default function LedgerPage() {
                   <tr key={sp.id}>
                     <td><strong>{vaultMap.get(sp.vault_item_id) || 'Unknown Supply'}</strong></td>
                     <td>{Number(sp.spoiled_quantity).toLocaleString()}</td>
-                    <td><span style={{ textTransform: 'uppercase', fontSize: '0.8rem', background: '#ffebee', padding: '2px 8px', borderRadius: 4, color: '#c62828' }}>{sp.reason}</span></td>
+                    <td><span style={{ textTransform: 'uppercase', fontSize: '0.8rem', background: '#ffebee', padding: '2px 8px', borderRadius: 4, color: '#c62828' }}>{t(`reason_${sp.reason}`)}</span></td>
                     <td style={{ fontWeight: 600, color: '#c62828' }}>-{Number(sp.financial_loss).toFixed(2)} RON</td>
                     <td style={{ color: 'var(--color-text-secondary)' }}>{new Date(sp.logged_at).toLocaleDateString()}</td>
                   </tr>
@@ -507,10 +508,10 @@ export default function LedgerPage() {
       {showPurchaseModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Purchase Bulk Supply (Vault)</h2>
+            <h2 className={styles.modalTitle}>{t('purchaseModalTitle')}</h2>
             <form onSubmit={handlePurchase}>
               <div className={styles.formGroup}>
-                <label>Supply Name</label>
+                <label>{t('supplyNameLabel')}</label>
                 <input
                   type="text"
                   required
@@ -522,20 +523,20 @@ export default function LedgerPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className={styles.formGroup}>
-                  <label>Total Quantity</label>
+                  <label>{t('totalQtyLabel')}</label>
                   <input
                     type="number"
                     step="any"
                     min="0.01"
                     required
-                    placeholder="e.g. 500"
+                    placeholder="500"
                     value={purchaseQty}
                     onChange={(e) => setPurchaseQty(e.target.value)}
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Unit of Measure</label>
+                  <label>{t('uomLabel')}</label>
                   <select value={purchaseUom} onChange={(e) => setPurchaseUom(e.target.value)}>
                     <option value="kg">kg</option>
                     <option value="liters">liters</option>
@@ -546,13 +547,13 @@ export default function LedgerPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Total Invoice Cost (RON)</label>
+                <label>{t('totalInvoiceCostLabel')}</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   required
-                  placeholder="e.g. 1250.00"
+                  placeholder="1250.00"
                   value={purchaseTotalCost}
                   onChange={(e) => setPurchaseTotalCost(e.target.value)}
                 />
@@ -560,10 +561,10 @@ export default function LedgerPage() {
 
               <div className={styles.modalButtons}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowPurchaseModal(false)}>
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button type="submit" className={styles.primaryBtn} disabled={formSubmitting}>
-                  {formSubmitting ? 'Saving...' : 'Add to Vault'}
+                  {formSubmitting ? t('saving') : t('addToVaultBtn')}
                 </button>
               </div>
             </form>
@@ -575,24 +576,24 @@ export default function LedgerPage() {
       {showAllocateModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Allocate Supply to Batch</h2>
+            <h2 className={styles.modalTitle}>{t('allocateModalTitle')}</h2>
             <form onSubmit={handleAllocate}>
               <div className={styles.formGroup}>
-                <label>Select Vault Item</label>
+                <label>{t('selectVaultItemLabel')}</label>
                 <select required value={allocVaultId} onChange={(e) => setAllocVaultId(e.target.value)}>
-                  <option value="">-- Choose Vault Supply --</option>
+                  <option value="">{t('chooseVaultSupply')}</option>
                   {vaultItems.filter((v) => Number(v.remaining_quantity) > 0).map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.item_name} ({v.remaining_quantity} {v.unit_of_measurement} remaining)
+                      {v.item_name} ({v.remaining_quantity} {v.unit_of_measurement} {t('remaining')})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className={styles.formGroup}>
-                <label>Target Asset Batch</label>
+                <label>{t('targetBatchLabel')}</label>
                 <select required value={allocAssetId} onChange={(e) => setAllocAssetId(e.target.value)}>
-                  <option value="">-- Choose Batch --</option>
+                  <option value="">{t('chooseBatch')}</option>
                   {assets.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.variety})
@@ -602,13 +603,13 @@ export default function LedgerPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Quantity to Allocate</label>
+                <label>{t('qtyToAllocateLabel')}</label>
                 <input
                   type="number"
                   step="any"
                   min="0.01"
                   required
-                  placeholder="e.g. 25"
+                  placeholder="25"
                   value={allocQty}
                   onChange={(e) => setAllocQty(e.target.value)}
                 />
@@ -616,10 +617,10 @@ export default function LedgerPage() {
 
               <div className={styles.modalButtons}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowAllocateModal(false)}>
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button type="submit" className={styles.primaryBtn} disabled={formSubmitting}>
-                  {formSubmitting ? 'Allocating...' : 'Confirm Allocation'}
+                  {formSubmitting ? t('allocating') : t('confirmAllocationBtn')}
                 </button>
               </div>
             </form>
@@ -631,12 +632,12 @@ export default function LedgerPage() {
       {showSaleModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Record Commercial Sale</h2>
+            <h2 className={styles.modalTitle}>{t('saleModalTitle')}</h2>
             <form onSubmit={handleSale}>
               <div className={styles.formGroup}>
-                <label>Select Asset Batch</label>
+                <label>{t('selectAssetBatchLabel')}</label>
                 <select required value={saleAssetId} onChange={(e) => setSaleAssetId(e.target.value)}>
-                  <option value="">-- Choose Asset --</option>
+                  <option value="">{t('chooseAsset')}</option>
                   {assets.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.variety})
@@ -647,26 +648,26 @@ export default function LedgerPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className={styles.formGroup}>
-                  <label>Quantity Sold</label>
+                  <label>{t('qtySoldCol')}</label>
                   <input
                     type="number"
                     step="any"
                     min="0.01"
                     required
-                    placeholder="e.g. 50"
+                    placeholder="50"
                     value={saleQty}
                     onChange={(e) => setSaleQty(e.target.value)}
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Unit Price (RON)</label>
+                  <label>{t('unitPriceLabel')}</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0.01"
                     required
-                    placeholder="e.g. 15.50"
+                    placeholder="15.50"
                     value={saleUnitPrice}
                     onChange={(e) => setSaleUnitPrice(e.target.value)}
                   />
@@ -675,10 +676,10 @@ export default function LedgerPage() {
 
               <div className={styles.modalButtons}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowSaleModal(false)}>
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button type="submit" className={styles.primaryBtn} disabled={formSubmitting}>
-                  {formSubmitting ? 'Saving...' : 'Record Revenue'}
+                  {formSubmitting ? t('saving') : t('recordRevenueBtn')}
                 </button>
               </div>
             </form>
@@ -690,15 +691,15 @@ export default function LedgerPage() {
       {showSpoilageModal && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modalContent}>
-            <h2 className={styles.modalTitle}>Record Supply Spoilage</h2>
+            <h2 className={styles.modalTitle}>{t('spoilageModalTitle')}</h2>
             <form onSubmit={handleSpoilage}>
               <div className={styles.formGroup}>
-                <label>Select Vault Item</label>
+                <label>{t('selectVaultItemLabel')}</label>
                 <select required value={spoilVaultId} onChange={(e) => setSpoilVaultId(e.target.value)}>
-                  <option value="">-- Choose Vault Item --</option>
+                  <option value="">{t('chooseVaultSupply')}</option>
                   {vaultItems.filter((v) => Number(v.remaining_quantity) > 0).map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.item_name} ({v.remaining_quantity} {v.unit_of_measurement} remaining)
+                      {v.item_name} ({v.remaining_quantity} {v.unit_of_measurement} {t('remaining')})
                     </option>
                   ))}
                 </select>
@@ -706,35 +707,35 @@ export default function LedgerPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className={styles.formGroup}>
-                  <label>Quantity Spoiled</label>
+                  <label>{t('qtySpoiledCol')}</label>
                   <input
                     type="number"
                     step="any"
                     min="0.01"
                     required
-                    placeholder="e.g. 5"
+                    placeholder="5"
                     value={spoilQty}
                     onChange={(e) => setSpoilQty(e.target.value)}
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Reason</label>
+                  <label>{t('reasonCol')}</label>
                   <select value={spoilReason} onChange={(e) => setSpoilReason(e.target.value as SpoilageReason)}>
-                    <option value="expired">Expired</option>
-                    <option value="spill">Spill / Damage</option>
-                    <option value="pest">Pest Infestation</option>
-                    <option value="disease">Disease / Mold</option>
+                    <option value="expired">{t('reason_expired')}</option>
+                    <option value="spill">{t('reason_spill')}</option>
+                    <option value="pest">{t('reason_pest')}</option>
+                    <option value="disease">{t('reason_disease')}</option>
                   </select>
                 </div>
               </div>
 
               <div className={styles.modalButtons}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowSpoilageModal(false)}>
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button type="submit" className={styles.primaryBtn} disabled={formSubmitting}>
-                  {formSubmitting ? 'Saving...' : 'Log Loss'}
+                  {formSubmitting ? t('saving') : t('logLossBtn')}
                 </button>
               </div>
             </form>

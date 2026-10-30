@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../hooks/useLanguage';
+import type { Locale } from '../context/languageContextInstance';
 import styles from './Layout.module.css';
-
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { to: '/assets', label: 'Assets', icon: '🌿' },
-  { to: '/ledger', label: 'Ledger', icon: '💰' },
-];
 
 export default function Layout() {
   const { user, signOut } = useAuth();
+  const { locale, setLocale, t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('agri_theme') === 'dark';
   });
+
+  const navItems = [
+    { to: '/dashboard', label: t('dashboardNav'), icon: '📊' },
+    { to: '/assets', label: t('assetsNav'), icon: '🌿' },
+    { to: '/ledger', label: t('ledgerNav'), icon: '💰' },
+  ];
 
   useEffect(() => {
     const root = document.documentElement;
@@ -65,6 +68,40 @@ export default function Layout() {
         </nav>
 
         <div className={styles.userSection}>
+          {/* Language Switcher */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 4,
+              marginBottom: 10,
+              background: 'var(--color-background)',
+              padding: 4,
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            {(['en', 'hu', 'ro'] as Locale[]).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLocale(lang)}
+                style={{
+                  flex: 1,
+                  padding: '5px 0',
+                  borderRadius: 6,
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  backgroundColor: locale === lang ? 'var(--color-primary)' : 'transparent',
+                  color: locale === lang ? '#ffffff' : 'var(--color-text-secondary)',
+                  transition: 'all var(--transition)',
+                }}
+              >
+                {lang === 'en' ? '🇬🇧 EN' : lang === 'hu' ? '🇭🇺 HU' : '🇷🇴 RO'}
+              </button>
+            ))}
+          </div>
+
           {/* Dark Mode Toggle Switch */}
           <div
             role="switch"
@@ -81,7 +118,7 @@ export default function Layout() {
           >
             <span className={styles.themeLabel}>
               <span>{darkMode ? '🌙' : '☀️'}</span>
-              {darkMode ? 'Dark Mode' : 'Light Mode'}
+              {darkMode ? t('darkMode') : t('lightMode')}
             </span>
             <div className={`${styles.switchTrack} ${darkMode ? styles.switchTrackActive : ''}`}>
               <div className={`${styles.switchThumb} ${darkMode ? styles.switchThumbActive : ''}`} />
@@ -90,7 +127,7 @@ export default function Layout() {
 
           <p className={styles.userEmail}>{user?.email}</p>
           <button className={styles.signOutBtn} onClick={signOut}>
-            Sign Out
+            {t('signOut')}
           </button>
         </div>
       </aside>
